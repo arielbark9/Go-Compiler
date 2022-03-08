@@ -2,12 +2,15 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"github.com/arielbark9/Go-Compiler/arithmetic"
 	ist "github.com/arielbark9/Go-Compiler/instructions"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -34,30 +37,55 @@ func main() {
 			panic("Panicking. Could not open file: " + vmFile.Name())
 		} // not deferring close here because we're inside a loop
 
-		wd, _ := os.Getwd()
-		outputFileName := wd + strings.TrimSuffix(vmFile.Name(), ".vm") + ".asm"
+		outputFileName := filepath.Join(path, strings.TrimSuffix(vmFile.Name(), ".vm")+".asm")
 		outputFile, err := os.Create(outputFileName)
 		if err != nil {
 			panic("Panicking. Could not open output file: " + outputFile.Name())
 		} // not deferring close here because we're inside a loop
 
+		var asmCommands []ist.Instruction
 		// scanning the file line after line
 		scanner := bufio.NewScanner(currentFile)
 		for scanner.Scan() {
-			var asmCommands []ist.Instruction
-			asmCommands = append(asmCommands, handleVmLine(scanner.Text())...)
+			if scanner.Text() != "" {
+				currentLineInstructions, err := handleVmLine(scanner.Text())
+				if err != nil {
+					fmt.Println(err)
+					panic("Compilation error in file in line")
+				}
+				asmCommands = append(asmCommands, currentLineInstructions...)
+			}
 		}
+
+		// write commands to output asm file
+		for _, command := range asmCommands {
+			outputFile.WriteString(command.Translate() + "\n")
+		}
+
+		// close files
 		outputFile.Close()
 		currentFile.Close()
 	}
 }
 
-func handleVmLine(text string) []ist.Instruction {
-	var res []ist.Instruction
+// handleVmLine handle a line of VM code and return asm instructions
+func handleVmLine(text string) ([]ist.Instruction, error) {
 	if strings.HasPrefix(text, "//") {
-		return []ist.Instruction{}
+		return []ist.Instruction{}, nil
 	}
-	return res
+
+	var splitInstruction = strings.Split(text, " ")
+
+	if splitInstruction[0] == "push" && splitInstruction[1] == "constant" {
+		parameter, _ := strconv.Atoi(splitInstruction[2])
+		return arithmetic.PushConstant(parameter), nil
+	} else if splitInstruction[0] == "add" {
+		return arithmetic.Add(), nil
+	} else {
+		return nil, errors.New("no matching instruction found")
+	}
+	// TODO: lt, gt, or, not Achikam
+	// TODO: eq, and, neg, sub Ariel
 }
 
 // extractFormatFiles extract some format of files from list of files

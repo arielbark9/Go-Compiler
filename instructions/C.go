@@ -10,12 +10,16 @@ type C struct {
 
 func (c C) Translate() string {
 	res := strings.Builder{}
-	if c.Dest != "null" {
+
+	if c.Dest != "" {
 		res.WriteString(c.Dest)
 	}
+
 	res.WriteString(" = " + c.Comp)
-	if c.Jump != "null" {
+
+	if c.Jump != "" {
 		res.WriteString(";" + c.Jump)
 	}
+
 	return res.String()
 }
