@@ -37,7 +37,7 @@ func Lt() []Instruction {
 	var res []Instruction
 	res = append(res, arithmetic.GetFirstVar...)
 	res = append(res, C{Dest: "A", Comp: "A-1", Jump: ""})
-	res = append(res, C{Dest: "D", Comp: "D-M", Jump: ""})
+	res = append(res, C{Dest: "D", Comp: "M-D", Jump: ""})
 	ifTrue0, _ := NewLabel(IfTrue)
 	res = append(res, A{Label: ifTrue0})
 	res = append(res, C{Dest: "", Comp: "D", Jump: "JLT"})
@@ -64,7 +64,7 @@ func Gt() []Instruction {
 	var res []Instruction
 	res = append(res, arithmetic.GetFirstVar...)
 	res = append(res, C{Dest: "A", Comp: "A-1", Jump: ""})
-	res = append(res, C{Dest: "D", Comp: "D-M", Jump: ""})
+	res = append(res, C{Dest: "D", Comp: "M-D", Jump: ""})
 	ifTrue0, _ := NewLabel(IfTrue)
 	res = append(res, A{Label: ifTrue0})
 	res = append(res, C{Dest: "", Comp: "D", Jump: "JGT"})

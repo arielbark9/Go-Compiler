@@ -79,16 +79,8 @@ func handleVmLine(text string) ([]Instruction, error) {
 		return []Instruction{}, nil
 	}
 	res := []Instruction{Comment{Text: text}}
-	var splitInstruction = strings.Split(text, " ")
 
-	//if splitInstruction[0] == "push" && splitInstruction[1] == "constant" {
-	//	parameter, _ := strconv.Atoi(splitInstruction[2])
-	//	res = append(res, PushConstant(parameter)...)
-	//} else if splitInstruction[0] == "add" {
-	//	res = append(res, Add()...)
-	//} else {
-	//	return nil, errors.New("no matching instruction found")
-	//}
+	var splitInstruction = strings.Split(text, " ")
 	switch splitInstruction[0] {
 	case "push":
 		switch splitInstruction[1] {
