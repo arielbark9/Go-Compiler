@@ -6,6 +6,7 @@ import (
 	"fmt"
 	. "github.com/arielbark9/Go-Compiler/arithmetic"
 	. "github.com/arielbark9/Go-Compiler/instructions"
+	. "github.com/arielbark9/Go-Compiler/logical"
 	. "github.com/arielbark9/Go-Compiler/memory"
 	"io/fs"
 	"io/ioutil"
@@ -80,12 +81,39 @@ func handleVmLine(text string) ([]Instruction, error) {
 	res := []Instruction{Comment{Text: text}}
 	var splitInstruction = strings.Split(text, " ")
 
-	if splitInstruction[0] == "push" && splitInstruction[1] == "constant" {
-		parameter, _ := strconv.Atoi(splitInstruction[2])
-		res = append(res, PushConstant(parameter)...)
-	} else if splitInstruction[0] == "add" {
-		res = append(res, Add()...)
-	} else {
+	//if splitInstruction[0] == "push" && splitInstruction[1] == "constant" {
+	//	parameter, _ := strconv.Atoi(splitInstruction[2])
+	//	res = append(res, PushConstant(parameter)...)
+	//} else if splitInstruction[0] == "add" {
+	//	res = append(res, Add()...)
+	//} else {
+	//	return nil, errors.New("no matching instruction found")
+	//}
+	switch splitInstruction[0] {
+	case "push":
+		switch splitInstruction[1] {
+		case "constant":
+			parameter, _ := strconv.Atoi(splitInstruction[2])
+			res = append(res, PushConstant(parameter)...)
+		}
+	case "add":
+		res = append(res, AddSet...)
+	case "and":
+		res = append(res, AndSet...)
+	case "neg":
+		res = append(res, NegSet...)
+	case "sub":
+		res = append(res, SubSet...)
+	case "or":
+		res = append(res, OrSet...)
+	case "not":
+		res = append(res, NotSet...)
+	case "eq":
+		res = append(res, Eq()...)
+	case "lt":
+	case "gt":
+
+	default:
 		return nil, errors.New("no matching instruction found")
 	}
 
