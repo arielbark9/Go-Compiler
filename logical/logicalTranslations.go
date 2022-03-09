@@ -32,6 +32,7 @@ func Eq() []Instruction {
 	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
 	return res
 }
+
 func Lt() []Instruction {
 	var res []Instruction
 	res = append(res, arithmetic.GetFirstVar...)

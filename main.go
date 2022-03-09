@@ -111,15 +111,14 @@ func handleVmLine(text string) ([]Instruction, error) {
 	case "eq":
 		res = append(res, Eq()...)
 	case "lt":
+		res = append(res, Lt()...)
 	case "gt":
-
+		res = append(res, Gt()...)
 	default:
 		return nil, errors.New("no matching instruction found")
 	}
 
 	return res, nil
-	// TODO: lt, gt, or, not Achikam
-	// TODO: eq, and, neg, sub Ariel
 }
 
 // extractFormatFiles extract some format of files from list of files
