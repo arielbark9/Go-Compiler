@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/arielbark9/Go-Compiler/arithmetic"
-	ist "github.com/arielbark9/Go-Compiler/instructions"
+	. "github.com/arielbark9/Go-Compiler/arithmetic"
+	. "github.com/arielbark9/Go-Compiler/instructions"
+	. "github.com/arielbark9/Go-Compiler/memory"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -15,10 +16,13 @@ import (
 )
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter absolute path of directory: ")
-	path, _ := reader.ReadString('\n')
-	path = path[:len(path)-2] // remove \r\n from path
+	if len(os.Args) != 2 {
+		panic("panicking. Exactly one variable should be passed.\n" +
+			"use like this:\n" +
+			"VMtranslator /path/to/dir/of/vm-files")
+	}
+
+	path := os.Args[1]
 
 	// get all files in directory
 	files, err := ioutil.ReadDir(path)
@@ -43,7 +47,7 @@ func main() {
 			panic("Panicking. Could not open output file: " + outputFile.Name())
 		} // not deferring close here because we're inside a loop
 
-		var asmCommands []ist.Instruction
+		var asmCommands []Instruction
 		// scanning the file line after line
 		scanner := bufio.NewScanner(currentFile)
 		for scanner.Scan() {
@@ -69,21 +73,23 @@ func main() {
 }
 
 // handleVmLine handle a line of VM code and return asm instructions
-func handleVmLine(text string) ([]ist.Instruction, error) {
+func handleVmLine(text string) ([]Instruction, error) {
 	if strings.HasPrefix(text, "//") {
-		return []ist.Instruction{}, nil
+		return []Instruction{}, nil
 	}
-
+	res := []Instruction{Comment{Text: text}}
 	var splitInstruction = strings.Split(text, " ")
 
 	if splitInstruction[0] == "push" && splitInstruction[1] == "constant" {
 		parameter, _ := strconv.Atoi(splitInstruction[2])
-		return arithmetic.PushConstant(parameter), nil
+		res = append(res, PushConstant(parameter)...)
 	} else if splitInstruction[0] == "add" {
-		return arithmetic.Add(), nil
+		res = append(res, Add()...)
 	} else {
 		return nil, errors.New("no matching instruction found")
 	}
+
+	return res, nil
 	// TODO: lt, gt, or, not Achikam
 	// TODO: eq, and, neg, sub Ariel
 }

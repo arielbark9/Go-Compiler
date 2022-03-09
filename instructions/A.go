@@ -9,7 +9,12 @@ type A struct {
 
 func (a A) Translate() string {
 	if a.Label.Name != Undefined {
-		return "@" + string(a.Label.Name) + strconv.Itoa(a.Label.ID)
+		switch a.Label.Name {
+		case IfTrue, IfFalse:
+			return "@" + string(a.Label.Name) + strconv.Itoa(a.Label.ID)
+		default:
+			return "@" + string(a.Label.Name)
+		}
 	}
 	return "@" + string(a.Num)
 }
