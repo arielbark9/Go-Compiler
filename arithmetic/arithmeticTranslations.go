@@ -12,66 +12,36 @@ var GetFirstVar = []Instruction{
 
 var SpLabel, _ = NewLabel(SP)
 
-// only need to calc once because no labels
+// only need to calc once because no labels or parameters
 
-var AddSet = add()
-var AndSet = and()
-var OrSet = or()
-var NegSet = neg()
-var SubSet = sub()
-var NotSet = not()
+var AddSet = append(GetFirstVar, []Instruction{
+	C{Dest: "A", Comp: "A-1", Jump: ""},
+	C{Dest: "M", Comp: "D+M", Jump: ""},
+	A{Label: SpLabel},
+	C{Dest: "M", Comp: "M-1", Jump: ""},
+}...)
 
-func add() []Instruction {
-	var res []Instruction
-	res = append(res, GetFirstVar...)
-	res = append(res, C{Dest: "A", Comp: "A-1", Jump: ""})
-	res = append(res, C{Dest: "M", Comp: "D+M", Jump: ""})
-	res = append(res, A{Label: SpLabel})
-	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
-	return res
+var AndSet = append(GetFirstVar, []Instruction{
+	C{Dest: "A", Comp: "A-1", Jump: ""},
+	C{Dest: "M", Comp: "D&M", Jump: ""},
+	A{Label: SpLabel},
+	C{Dest: "M", Comp: "M-1", Jump: ""},
+}...)
 
-}
+var OrSet = append(GetFirstVar, []Instruction{
+	C{Dest: "M", Comp: "D|M", Jump: ""},
+	A{Label: SpLabel},
+	C{Dest: "A", Comp: "A-1", Jump: ""},
+	C{Dest: "M", Comp: "M-1", Jump: ""},
+}...)
 
-func and() []Instruction {
-	var res []Instruction
-	res = append(res, GetFirstVar...)
-	res = append(res, C{Dest: "A", Comp: "A-1", Jump: ""})
-	res = append(res, C{Dest: "M", Comp: "D&M", Jump: ""})
-	res = append(res, A{Label: SpLabel})
-	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
-	return res
-}
+var SubSet = append(GetFirstVar, []Instruction{
+	C{Dest: "A", Comp: "A-1", Jump: ""},
+	C{Dest: "M", Comp: "M-D", Jump: ""},
+	A{Label: SpLabel},
+	C{Dest: "M", Comp: "M-1", Jump: ""},
+}...)
 
-func or() []Instruction {
-	var res []Instruction
-	res = append(res, GetFirstVar...)
-	res = append(res, C{Dest: "A", Comp: "A-1", Jump: ""})
-	res = append(res, C{Dest: "M", Comp: "D|M", Jump: ""})
-	res = append(res, A{Label: SpLabel})
-	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
-	return res
-}
+var NegSet = append(GetFirstVar[:2], C{Dest: "M", Comp: "-M", Jump: ""})
 
-func sub() []Instruction {
-	var res []Instruction
-	res = append(res, GetFirstVar...)
-	res = append(res, C{Dest: "A", Comp: "A-1", Jump: ""})
-	res = append(res, C{Dest: "M", Comp: "M-D", Jump: ""})
-	res = append(res, A{Label: SpLabel})
-	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
-	return res
-}
-
-func neg() []Instruction {
-	var res []Instruction
-	res = append(res, GetFirstVar[:2]...)
-	res = append(res, C{Dest: "M", Comp: "-M", Jump: ""})
-	return res
-}
-
-func not() []Instruction {
-	var res []Instruction
-	res = append(res, GetFirstVar[:2]...)
-	res = append(res, C{Dest: "M", Comp: "!M", Jump: ""})
-	return res
-}
+var NotSet = append(GetFirstVar[:2], C{Dest: "M", Comp: "!M", Jump: ""})
