@@ -3,7 +3,7 @@ package instructions
 import "strconv"
 
 type A struct {
-	Num   string
+	Num   int
 	Label label
 }
 
@@ -16,5 +16,5 @@ func (a A) Translate() string {
 			return "@" + string(a.Label.Name)
 		}
 	}
-	return "@" + string(a.Num)
+	return "@" + strconv.Itoa(a.Num)
 }

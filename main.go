@@ -85,10 +85,60 @@ func handleVmLine(text string) ([]Instruction, error) {
 	var splitInstruction = strings.Split(text, " ")
 	switch splitInstruction[0] {
 	case "push":
+		parameter, _ := strconv.Atoi(splitInstruction[2])
 		switch splitInstruction[1] {
 		case "constant":
-			parameter, _ := strconv.Atoi(splitInstruction[2])
 			res = append(res, PushConstant(parameter)...)
+		case "local":
+			res = append(res, PushLocal(parameter)...)
+		case "argument":
+			res = append(res, PushArgument(parameter)...)
+		case "this":
+			res = append(res, PushThis(parameter)...)
+		case "that":
+			res = append(res, PushThat(parameter)...)
+		case "temp":
+			res = append(res, PushTemp(parameter)...)
+		case "static":
+			res = append(res, PushStatic(parameter)...)
+		case "pointer":
+			switch splitInstruction[2] {
+			case "0":
+				res = append(res, PushPointer0Set...)
+			case "1":
+				res = append(res, PushPointer1Set...)
+			default:
+				return nil, errors.New("no matching instruction found")
+			}
+		default:
+			return nil, errors.New("no matching instruction found")
+		}
+	case "pop":
+		parameter, _ := strconv.Atoi(splitInstruction[2])
+		switch splitInstruction[1] {
+		case "local":
+			res = append(res, PopLocal(parameter)...)
+		case "argument":
+			res = append(res, PopArgument(parameter)...)
+		case "this":
+			res = append(res, PopThis(parameter)...)
+		case "that":
+			res = append(res, PopThat(parameter)...)
+		case "temp":
+			res = append(res, PopTemp(parameter)...)
+		case "static":
+			res = append(res, PopStatic(parameter)...)
+		case "pointer":
+			switch splitInstruction[2] {
+			case "0":
+				res = append(res, PopPointer0Set...)
+			case "1":
+				res = append(res, PopPointer1Set...)
+			default:
+				return nil, errors.New("no matching instruction found")
+			}
+		default:
+			return nil, errors.New("no matching instruction found")
 		}
 	case "add":
 		res = append(res, AddSet...)

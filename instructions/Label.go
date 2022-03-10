@@ -13,6 +13,10 @@ type LabelType string
 const (
 	Undefined LabelType = ""
 	SP                  = "SP"
+	LCL                 = "LCL"
+	ARG                 = "ARG"
+	THIS                = "THIS"
+	THAT                = "THAT"
 	IfTrue              = "IF_TRUE"
 	IfFalse             = "IF_FALSE"
 )
