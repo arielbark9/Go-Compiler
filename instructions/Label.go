@@ -21,6 +21,8 @@ const (
 	IfFalse             = "IF_FALSE"
 )
 
+var FileName LabelType
+
 type label struct {
 	Name LabelType
 	ID   int

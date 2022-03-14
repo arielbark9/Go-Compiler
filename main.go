@@ -53,7 +53,7 @@ func main() {
 		scanner := bufio.NewScanner(currentFile)
 		for scanner.Scan() {
 			if scanner.Text() != "" { // not an empty line
-				currentLineInstructions, err := handleVmLine(scanner.Text())
+				currentLineInstructions, err := handleVmLine(scanner.Text(), strings.TrimSuffix(vmFile.Name(), ".vm"))
 				if err != nil {
 					log.Fatalf("Compilation error in file %s in line %d\n"+
 						"%s\n "+
@@ -76,7 +76,7 @@ func main() {
 }
 
 // handleVmLine handle a line of VM code and return asm instructions
-func handleVmLine(text string) ([]Instruction, error) {
+func handleVmLine(text string, fileName string) ([]Instruction, error) {
 	if strings.HasPrefix(text, "//") {
 		return []Instruction{}, nil
 	}
@@ -100,7 +100,7 @@ func handleVmLine(text string) ([]Instruction, error) {
 		case "temp":
 			res = append(res, PushTemp(parameter)...)
 		case "static":
-			res = append(res, PushStatic(parameter)...)
+			res = append(res, PushStatic(parameter, fileName)...)
 		case "pointer":
 			switch splitInstruction[2] {
 			case "0":
@@ -127,7 +127,7 @@ func handleVmLine(text string) ([]Instruction, error) {
 		case "temp":
 			res = append(res, PopTemp(parameter)...)
 		case "static":
-			res = append(res, PopStatic(parameter)...)
+			res = append(res, PopStatic(parameter, fileName)...)
 		case "pointer":
 			switch splitInstruction[2] {
 			case "0":

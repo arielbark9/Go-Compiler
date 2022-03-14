@@ -56,6 +56,12 @@ func PushConstant(n int) []Instruction {
 	return res
 }
 
+//func PopConstant(n int) []Instruction {
+//	var res []Instruction
+//	res = append(res, A{{}})
+//	return res
+//}
+
 func PushLocal(n int) []Instruction {
 	var res []Instruction
 	res = append(res, A{Num: n})
@@ -131,8 +137,18 @@ func PushTemp(n int) []Instruction {
 	return res
 }
 
-func PushStatic(n int) []Instruction {
+func PushStatic(n int, fileName string) []Instruction {
 	var res []Instruction
+	FileName = LabelType(fileName)
+	fileLabel, _ := NewLabel(FileName)
+	fileLabel.ID = n
+	res = append(res, A{Label: fileLabel})
+	res = append(res, C{Dest: "D", Comp: "M", Jump: ""})
+	res = append(res, A{Label: SpLabel})
+	res = append(res, C{Dest: "A", Comp: "M", Jump: ""})
+	res = append(res, C{Dest: "M", Comp: "D", Jump: ""})
+	res = append(res, A{Label: SpLabel})
+	res = append(res, C{Dest: "M", Comp: "M+1", Jump: ""})
 	return res
 }
 
@@ -212,7 +228,15 @@ func PopTemp(n int) []Instruction {
 	return res
 }
 
-func PopStatic(n int) []Instruction {
+func PopStatic(n int, fileName string) []Instruction {
 	var res []Instruction
+	res = append(res, GetFirstVar...)
+	FileName = LabelType(fileName)
+	fileLabel, _ := NewLabel(FileName)
+	fileLabel.ID = n
+	res = append(res, A{Label: fileLabel})
+	res = append(res, C{Dest: "M", Comp: "D", Jump: ""})
+	res = append(res, A{Label: SpLabel})
+	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
 	return res
 }
