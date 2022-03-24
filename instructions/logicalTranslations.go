@@ -1,8 +1,4 @@
-package logical
-
-import (
-	. "github.com/arielbark9/Go-Compiler/instructions"
-)
+package instructions
 
 func Eq() []Instruction {
 	var res []Instruction

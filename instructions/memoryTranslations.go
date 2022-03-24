@@ -1,8 +1,4 @@
-package memory
-
-import (
-	. "github.com/arielbark9/Go-Compiler/instructions"
-)
+package instructions
 
 var PushPointer0Set = []Instruction{
 	A{Label: ThisLabel},

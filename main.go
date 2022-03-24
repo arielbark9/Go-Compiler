@@ -6,10 +6,7 @@ package main
 import (
 	"bufio"
 	"errors"
-	. "github.com/arielbark9/Go-Compiler/arithmetic"
 	. "github.com/arielbark9/Go-Compiler/instructions"
-	. "github.com/arielbark9/Go-Compiler/logical"
-	. "github.com/arielbark9/Go-Compiler/memory"
 	"io/fs"
 	"io/ioutil"
 	"log"

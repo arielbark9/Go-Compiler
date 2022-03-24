@@ -1,8 +1,4 @@
-package arithmetic
-
-import (
-	. "github.com/arielbark9/Go-Compiler/instructions"
-)
+package instructions
 
 // only need to calc once because no labels or parameters
 
