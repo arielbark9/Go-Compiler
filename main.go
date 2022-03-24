@@ -36,18 +36,19 @@ func main() {
 
 	vmFiles := extractFormatFiles(files, "vm")
 
+	outputFileName := filepath.Join(path, filepath.Base(path)+".asm")
+	outputFile, err := os.Create(outputFileName)
+	if err != nil {
+		log.Fatalf("Fatal Error. Could not open output file: %s", outputFile.Name())
+	}
+	defer outputFile.Close()
+
 	// foreach file in the list
 	for _, vmFile := range vmFiles {
 		// open the file using its name
 		currentFile, err := os.Open(filepath.Join(path, vmFile.Name()))
 		if err != nil {
 			log.Fatalf("fatal error. Could not open file: %s", vmFile.Name())
-		} // not deferring close here because we're inside a loop
-
-		outputFileName := filepath.Join(path, strings.TrimSuffix(vmFile.Name(), ".vm")+".asm")
-		outputFile, err := os.Create(outputFileName)
-		if err != nil {
-			log.Fatalf("Fatal Error. Could not open output file: %s", outputFile.Name())
 		} // not deferring close here because we're inside a loop
 
 		var asmCommands []Instruction
@@ -72,8 +73,6 @@ func main() {
 			outputFile.WriteString(command.Translate() + "\n")
 		}
 
-		// close files
-		outputFile.Close()
 		currentFile.Close()
 	}
 }
