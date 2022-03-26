@@ -52,12 +52,6 @@ func PushConstant(n int) []Instruction {
 	return res
 }
 
-//func PopConstant(n int) []Instruction {
-//	var res []Instruction
-//	res = append(res, A{{}})
-//	return res
-//}
-
 func PushLocal(n int) []Instruction {
 	var res []Instruction
 	res = append(res, A{Num: n})

@@ -69,7 +69,6 @@ func main() {
 		for _, command := range asmCommands {
 			outputFile.WriteString(command.Translate() + "\n")
 		}
-
 		currentFile.Close()
 	}
 }
@@ -157,6 +156,16 @@ func handleVmLine(text string, fileName string) ([]Instruction, error) {
 		res = append(res, Lt()...)
 	case "gt":
 		res = append(res, Gt()...)
+	case "goto":
+		l, _ := NewLabel(LabelType(fileName + "." + splitInstruction[1]))
+		res = append(res, Goto(l)...)
+	case "if-goto":
+		l, _ := NewLabel(LabelType(fileName + "." + splitInstruction[1]))
+		res = append(res, IfGoto(l)...)
+	case "label":
+		l, _ := NewLabel(LabelType(fileName + "." + splitInstruction[1]))
+		l.ID = -1
+		res = append(res, LabelDec(l)...)
 	default:
 		return nil, errors.New("no matching instruction found")
 	}

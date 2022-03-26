@@ -46,8 +46,10 @@ func NewLabel(name LabelType) (label, error) {
 }
 
 func (l label) Translate() string {
-	if l.Name != Undefined {
+	if l.Name != Undefined && l.ID != -1 {
 		return "(" + string(l.Name) + strconv.Itoa(l.ID) + ")"
+	} else if l.Name != Undefined {
+		return "(" + string(l.Name) + ")"
 	}
 	return ""
 }
