@@ -40,6 +40,16 @@ func main() {
 	}
 	defer outputFile.Close()
 
+	var asmCommands []Instruction = []Instruction{
+		A{Num: 256},
+		C{Dest: "D", Comp: "A", Jump: ""},
+		A{Label: SpLabel},
+		C{Dest: "M", Comp: "D", Jump: ""},
+	}
+	initCall, _ := handleVmLine("call Sys.init", outputFileName)
+	asmCommands = append(asmCommands, initCall...)
+	//var asmCommands []Instruction
+
 	// foreach file in the list
 	for _, vmFile := range vmFiles {
 		// open the file using its name
@@ -48,28 +58,27 @@ func main() {
 			log.Fatalf("fatal error. Could not open file: %s", vmFile.Name())
 		} // not deferring close here because we're inside a loop
 
-		var asmCommands []Instruction
 		// scanning the file line after line
 		line := 1
 		scanner := bufio.NewScanner(currentFile)
 		for scanner.Scan() {
-			if scanner.Text() != "" { // not an empty line
-				currentLineInstructions, err := handleVmLine(scanner.Text(), strings.TrimSuffix(vmFile.Name(), ".vm"))
+			lineText := scanner.Text()
+			if lineText != "" { // not an empty line
+				currentLineInstructions, err := handleVmLine(lineText, strings.TrimSuffix(vmFile.Name(), ".vm"))
 				if err != nil {
 					log.Fatalf("Compilation error in file %s in line %d\n"+
 						"%s\n "+
-						"%s", currentFile.Name(), line, err.Error(), scanner.Text())
+						"%s", currentFile.Name(), line, err.Error(), lineText)
 				}
 				asmCommands = append(asmCommands, currentLineInstructions...)
-				line++
 			}
-		}
-
-		// write commands to output asm file
-		for _, command := range asmCommands {
-			outputFile.WriteString(command.Translate() + "\n")
+			line++
 		}
 		currentFile.Close()
+	}
+	// write commands to output asm file
+	for _, command := range asmCommands {
+		outputFile.WriteString(command.Translate() + "\n")
 	}
 }
 
@@ -80,7 +89,7 @@ func handleVmLine(text string, fileName string) ([]Instruction, error) {
 	}
 	res := []Instruction{Comment{Text: text}}
 
-	var splitInstruction = strings.Split(text, " ")
+	var splitInstruction = strings.Fields(text)
 	switch splitInstruction[0] {
 	case "push":
 		parameter, _ := strconv.Atoi(splitInstruction[2])
@@ -164,8 +173,22 @@ func handleVmLine(text string, fileName string) ([]Instruction, error) {
 		res = append(res, IfGoto(l)...)
 	case "label":
 		l, _ := NewLabel(LabelType(fileName + "." + splitInstruction[1]))
-		l.ID = -1
 		res = append(res, LabelDec(l)...)
+	case "call":
+		var nArgs int = 0
+		if len(splitInstruction) >= 3 {
+			var err error
+			nArgs, err = strconv.Atoi(splitInstruction[2])
+			if err != nil {
+				nArgs = 0
+			}
+		}
+		res = append(res, Call(splitInstruction[1], nArgs)...)
+	case "function":
+		nArgs, _ := strconv.Atoi(splitInstruction[2])
+		res = append(res, FunctionDeclaration(splitInstruction[1], nArgs)...)
+	case "return":
+		res = append(res, Return()...)
 	default:
 		return nil, errors.New("no matching instruction found")
 	}

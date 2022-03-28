@@ -55,6 +55,7 @@ func Lt() []Instruction {
 	res = append(res, C{Dest: "M", Comp: "M-1", Jump: ""})
 	return res
 }
+
 func Gt() []Instruction {
 	var res []Instruction
 	res = append(res, GetFirstVar...)

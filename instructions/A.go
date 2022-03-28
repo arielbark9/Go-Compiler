@@ -9,10 +9,9 @@ type A struct {
 
 func (a A) Translate() string {
 	if a.Label.Name != Undefined {
-		switch a.Label.Name {
-		case IfTrue, IfFalse, FileName:
+		if a.Label.ID != -1 {
 			return "@" + string(a.Label.Name) + "." + strconv.Itoa(a.Label.ID)
-		default:
+		} else {
 			return "@" + string(a.Label.Name)
 		}
 	}

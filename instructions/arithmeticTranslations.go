@@ -17,9 +17,9 @@ var AndSet = append(GetFirstVar, []Instruction{
 }...)
 
 var OrSet = append(GetFirstVar, []Instruction{
+	C{Dest: "A", Comp: "A-1", Jump: ""},
 	C{Dest: "M", Comp: "D|M", Jump: ""},
 	A{Label: SpLabel},
-	C{Dest: "A", Comp: "A-1", Jump: ""},
 	C{Dest: "M", Comp: "M-1", Jump: ""},
 }...)
 

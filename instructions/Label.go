@@ -29,7 +29,7 @@ type label struct {
 }
 
 func NewLabel(name LabelType) (label, error) {
-	l := label{Name: name}
+	l := label{Name: name, ID: -1}
 
 	switch name {
 	case IfTrue:
@@ -47,7 +47,7 @@ func NewLabel(name LabelType) (label, error) {
 
 func (l label) Translate() string {
 	if l.Name != Undefined && l.ID != -1 {
-		return "(" + string(l.Name) + strconv.Itoa(l.ID) + ")"
+		return "(" + string(l.Name) + "." + strconv.Itoa(l.ID) + ")"
 	} else if l.Name != Undefined {
 		return "(" + string(l.Name) + ")"
 	}
