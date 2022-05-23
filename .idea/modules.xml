@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/JackCompiler/JackCompiler.iml" filepath="$PROJECT_DIR$/JackCompiler/JackCompiler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/VMTranslator/VMTranslator.iml" filepath="$PROJECT_DIR$/VMTranslator/VMTranslator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/go-compiler.iml" filepath="$PROJECT_DIR$/.idea/go-compiler.iml" />
+    </modules>
+  </component>
+</project>

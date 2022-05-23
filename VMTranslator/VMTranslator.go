@@ -4,9 +4,9 @@
 package main
 
 import (
+	. "VMTranslator/instructions"
 	"bufio"
 	"errors"
-	. "github.com/arielbark9/Go-Compiler/instructions"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -40,6 +40,7 @@ func main() {
 	}
 	defer outputFile.Close()
 
+	// Bootstrap code
 	var asmCommands []Instruction = []Instruction{
 		A{Num: 256},
 		C{Dest: "D", Comp: "A", Jump: ""},
