@@ -1,7 +1,6 @@
-package Tokenizer
+package Parser
 
 import (
-	"encoding/xml"
 	"errors"
 	"regexp"
 	"strings"
@@ -18,16 +17,11 @@ var STRING_REGEX = regexp.MustCompile("^\"[^\n]*\"$")
 var KEYWORD_REGEX = regexp.MustCompile("^(class|constructor|function|method|field|static|var|int|char|boolean|void|true|false|null|this|let|do|if|else|while|return)")
 var SYMBOLS = [...]string{"{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "|", "<", ">", "=", "~"}
 
-type token struct {
-	Type  string
-	Value string
-}
-
 func match(current int, regex *regexp.Regexp, _type string) (token, error) {
 	currentLexeme := string(source[:current])
 	if regex.MatchString(currentLexeme) {
 		source = strings.TrimPrefix(source, currentLexeme)
-		return token{Type: _type, Value: strings.Replace(currentLexeme, "\"", "", -1)}, nil
+		return token{tType: _type, value: strings.Replace(currentLexeme, "\"", "", -1)}, nil
 	} else {
 		return token{}, errors.New("invalid " + _type)
 	}
@@ -56,8 +50,8 @@ func Q0() token {
 		source = strings.TrimPrefix(source, currChar)
 		current = 0
 		return token{
-			Type:  "symbol",
-			Value: value,
+			tType: "symbol",
+			value: value,
 		}
 	} else if currChar == "\"" {
 		current++
@@ -146,10 +140,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func GetXML(_source string) string {
-	res := ""
-	res += xml.Header
-	res += "<tokens>\n"
+func GetTokens(_source string) []token {
 	source = _source
 	current = 0
 	var tokens []token
@@ -170,10 +161,5 @@ func GetXML(_source string) string {
 		tokens = append(tokens, Q0())
 	}
 
-	for _, t := range tokens {
-		res += "<" + t.Type + "> " + t.Value + " </" + t.Type + ">\n"
-	}
-
-	res += "</tokens>\n"
-	return res
+	return tokens
 }
