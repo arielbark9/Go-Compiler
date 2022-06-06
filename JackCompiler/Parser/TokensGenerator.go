@@ -21,7 +21,7 @@ func match(current int, regex *regexp.Regexp, _type string) (token, error) {
 	currentLexeme := string(source[:current])
 	if regex.MatchString(currentLexeme) {
 		source = strings.TrimPrefix(source, currentLexeme)
-		return token{tType: _type, value: strings.Replace(currentLexeme, "\"", "", -1)}, nil
+		return token{tType: _type, tValue: strings.Replace(currentLexeme, "\"", "", -1)}, nil
 	} else {
 		return token{}, errors.New("invalid " + _type)
 	}
@@ -50,8 +50,8 @@ func Q0() token {
 		source = strings.TrimPrefix(source, currChar)
 		current = 0
 		return token{
-			tType: "symbol",
-			value: value,
+			tType:  "symbol",
+			tValue: value,
 		}
 	} else if currChar == "\"" {
 		current++

@@ -11,11 +11,11 @@ var varNames []string
 var subroutineNames []string
 var COMMA_REGEX = regexp.MustCompile(",")
 
-func matchToken(that *regexp.Regexp) *xmlElement {
-	if that.MatchString(tokens[currentToken].value) {
-		res := xmlElement{
-			xType:    tokens[currentToken].tType,
-			value:    tokens[currentToken].value,
+func matchToken(that *regexp.Regexp) *node {
+	if that.MatchString(tokens[currentToken].tValue) {
+		res := node{
+			nType:    tokens[currentToken].tType,
+			nValue:   tokens[currentToken].tValue,
 			children: nil,
 		}
 		currentToken++
@@ -24,16 +24,16 @@ func matchToken(that *regexp.Regexp) *xmlElement {
 	return nil
 }
 
-func class() *xmlElement {
-	res := &xmlElement{
-		xType:    "class",
-		value:    "",
-		children: []*xmlElement{},
+func class() *node {
+	res := &node{
+		nType:    "class",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("class")))
 	name := className()
 	res.children = append(res.children, name)
-	classNames = append(classNames, name.value)
+	classNames = append(classNames, name.nValue)
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\{")))
 	for c := classVarDec(); c != nil; c = classVarDec() {
 		res.children = append(res.children, c)
@@ -45,23 +45,23 @@ func class() *xmlElement {
 	return res
 }
 
-func typeDefinition() *xmlElement {
+func typeDefinition() *node {
 	if s := matchToken(regexp.MustCompile("int|char|boolean")); s != nil {
 		return s
-	} else if IDENTIFIER_REGEX.Match([]byte(tokens[currentToken].value)) {
+	} else if IDENTIFIER_REGEX.Match([]byte(tokens[currentToken].tValue)) {
 		return className()
 	} else {
 		return nil
 	}
 }
 
-func subroutineDec() *xmlElement {
-	var res *xmlElement = nil
+func subroutineDec() *node {
+	var res *node = nil
 	if s := matchToken(regexp.MustCompile("(constructor|function|method)")); s != nil {
-		res = &xmlElement{
-			xType:    "subroutineDec",
-			value:    "",
-			children: []*xmlElement{s},
+		res = &node{
+			nType:    "subroutineDec",
+			nValue:   "",
+			children: []*node{s},
 		}
 		if s := matchToken(regexp.MustCompile("void")); s != nil {
 			res.children = append(res.children, s)
@@ -70,7 +70,7 @@ func subroutineDec() *xmlElement {
 		}
 		name := subroutineName()
 		res.children = append(res.children, name)
-		subroutineNames = append(subroutineNames, name.value)
+		subroutineNames = append(subroutineNames, name.nValue)
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
 		res.children = append(res.children, parameterList())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
@@ -79,11 +79,11 @@ func subroutineDec() *xmlElement {
 	return res
 }
 
-func subroutineBody() *xmlElement {
-	res := &xmlElement{
-		xType:    "subroutineBody",
-		value:    "",
-		children: []*xmlElement{},
+func subroutineBody() *node {
+	res := &node{
+		nType:    "subroutineBody",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\{")))
 	for c := varDec(); c != nil; c = varDec() {
@@ -96,23 +96,27 @@ func subroutineBody() *xmlElement {
 	return res
 }
 
-func statements() *xmlElement {
+func statements() *node {
 	if s := statement(); s != nil {
-		res := &xmlElement{
-			xType:    "statements",
-			value:    "",
-			children: []*xmlElement{s},
+		res := &node{
+			nType:    "statements",
+			nValue:   "",
+			children: []*node{s},
 		}
 		for s := statement(); s != nil; s = statement() {
 			res.children = append(res.children, s)
 		}
 		return res
 	}
-	return nil
+	return &node{
+		nType:    "statements",
+		nValue:   "",
+		children: nil,
+	}
 }
 
-func statement() *xmlElement {
-	val := tokens[currentToken].value
+func statement() *node {
+	val := tokens[currentToken].tValue
 	if val == "let" {
 		return letStatement()
 	} else if val == "if" {
@@ -127,11 +131,11 @@ func statement() *xmlElement {
 	return nil
 }
 
-func returnStatement() *xmlElement {
-	res := &xmlElement{
-		xType:    "returnStatement",
-		value:    "",
-		children: []*xmlElement{},
+func returnStatement() *node {
+	res := &node{
+		nType:    "returnStatement",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("return")))
 	if s := expression(); s != nil {
@@ -141,11 +145,11 @@ func returnStatement() *xmlElement {
 	return res
 }
 
-func doStatement() *xmlElement {
-	res := &xmlElement{
-		xType:    "doStatement",
-		value:    "",
-		children: []*xmlElement{},
+func doStatement() *node {
+	res := &node{
+		nType:    "doStatement",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("do")))
 	//res.children = append(res.children, subroutineCall())
@@ -154,11 +158,11 @@ func doStatement() *xmlElement {
 	return res
 }
 
-func whileStatement() *xmlElement {
-	res := &xmlElement{
-		xType:    "whileStatement",
-		value:    "",
-		children: []*xmlElement{},
+func whileStatement() *node {
+	res := &node{
+		nType:    "whileStatement",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("while")))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
@@ -170,11 +174,11 @@ func whileStatement() *xmlElement {
 	return res
 }
 
-func ifStatement() *xmlElement {
-	res := &xmlElement{
-		xType:    "ifStatement",
-		value:    "",
-		children: []*xmlElement{},
+func ifStatement() *node {
+	res := &node{
+		nType:    "ifStatement",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("if")))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
@@ -192,11 +196,11 @@ func ifStatement() *xmlElement {
 	return res
 }
 
-func letStatement() *xmlElement {
-	res := &xmlElement{
-		xType:    "letStatement",
-		value:    "",
-		children: []*xmlElement{},
+func letStatement() *node {
+	res := &node{
+		nType:    "letStatement",
+		nValue:   "",
+		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("let")))
 	res.children = append(res.children, varName())
@@ -211,11 +215,11 @@ func letStatement() *xmlElement {
 	return res
 }
 
-func expression() *xmlElement {
-	res := &xmlElement{
-		xType:    "expression",
-		value:    "",
-		children: []*xmlElement{},
+func expression() *node {
+	res := &node{
+		nType:    "expression",
+		nValue:   "",
+		children: []*node{},
 	}
 	if s := term(); s != nil {
 		res.children = append(res.children, s)
@@ -228,18 +232,18 @@ func expression() *xmlElement {
 	return nil
 }
 
-func op() *xmlElement {
+func op() *node {
 	if s := matchToken(regexp.MustCompile("[+\\-*/&|<>=]")); s != nil {
 		return s
 	}
 	return nil
 }
 
-func term() *xmlElement {
-	res := &xmlElement{
-		xType:    "term",
-		value:    "",
-		children: []*xmlElement{},
+func term() *node {
+	res := &node{
+		nType:    "term",
+		nValue:   "",
+		children: []*node{},
 	}
 	tokenCount := len(tokens)
 	if s := matchToken(INTEGER_REGEX); s != nil {
@@ -248,9 +252,10 @@ func term() *xmlElement {
 		res.children = append(res.children, s)
 	} else if s := keywordConstant(); s != nil {
 		res.children = append(res.children, s)
-	} else if tokens[currentToken+1].value != "[" &&
-		(currentToken < tokenCount-1 && tokens[currentToken+1].value == "(") ||
-		(currentToken < tokenCount-3 && tokens[currentToken+3].value == "(") {
+	} else if tokens[currentToken+1].tValue != "[" &&
+		((currentToken < tokenCount-1 && tokens[currentToken+1].tValue == "(") ||
+			((currentToken < tokenCount-1 && tokens[currentToken+1].tValue == ".") &&
+				currentToken < tokenCount-3 && tokens[currentToken+3].tValue == "(")) {
 		if s := subroutineCall(); s != nil {
 			//res.children = append(res.children, s)
 			res.children = append(res.children, s.children...)
@@ -291,34 +296,34 @@ func term() *xmlElement {
 	return res
 }
 
-func keywordConstant() *xmlElement {
+func keywordConstant() *node {
 	if s := matchToken(regexp.MustCompile("true|false|null|this")); s != nil {
 		return s
 	}
 	return nil
 }
 
-func unaryOp() *xmlElement {
+func unaryOp() *node {
 	if s := matchToken(regexp.MustCompile("[~\\-]")); s != nil {
 		return s
 	}
 	return nil
 }
 
-func subroutineCall() *xmlElement {
-	res := &xmlElement{
-		xType:    "subroutineCall",
-		value:    "",
-		children: []*xmlElement{},
+func subroutineCall() *node {
+	res := &node{
+		nType:    "subroutineCall",
+		nValue:   "",
+		children: []*node{},
 	}
-	name := tokens[currentToken].value
+	name := tokens[currentToken].tValue
 	if contains(subroutineNames, name) {
 		res.children = append(res.children, subroutineName())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
 		res.children = append(res.children, expressionList())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
 		return res
-	} else if contains(varNames, tokens[currentToken].value) {
+	} else if contains(varNames, tokens[currentToken].tValue) {
 		res.children = append(res.children, varName())
 	} else if IDENTIFIER_REGEX.Match([]byte(name)) {
 		res.children = append(res.children, className())
@@ -334,11 +339,11 @@ func subroutineCall() *xmlElement {
 	return res
 }
 
-func expressionList() *xmlElement {
-	res := &xmlElement{
-		xType:    "expressionList",
-		value:    "",
-		children: []*xmlElement{},
+func expressionList() *node {
+	res := &node{
+		nType:    "expressionList",
+		nValue:   "",
+		children: []*node{},
 	}
 	if s := expression(); s != nil {
 		res.children = append(res.children, s)
@@ -350,32 +355,32 @@ func expressionList() *xmlElement {
 	return res
 }
 
-func varName() *xmlElement {
+func varName() *node {
 	if s := matchToken(IDENTIFIER_REGEX); s != nil {
 		return s
 	}
 	return nil
 }
 
-func className() *xmlElement {
+func className() *node {
 	if s := matchToken(IDENTIFIER_REGEX); s != nil {
 		return s
 	}
 	return nil
 }
 
-func subroutineName() *xmlElement {
+func subroutineName() *node {
 	if s := matchToken(IDENTIFIER_REGEX); s != nil {
 		return s
 	}
 	return nil
 }
 
-func varDec() *xmlElement {
-	res := &xmlElement{
-		xType:    "varDec",
-		value:    "",
-		children: []*xmlElement{},
+func varDec() *node {
+	res := &node{
+		nType:    "varDec",
+		nValue:   "",
+		children: []*node{},
 	}
 	if s := matchToken(regexp.MustCompile("var")); s != nil {
 		res.children = append(res.children, s)
@@ -392,11 +397,11 @@ func varDec() *xmlElement {
 	return res
 }
 
-func parameterList() *xmlElement {
-	res := &xmlElement{
-		xType:    "parameterList",
-		value:    "",
-		children: []*xmlElement{},
+func parameterList() *node {
+	res := &node{
+		nType:    "parameterList",
+		nValue:   "",
+		children: []*node{},
 	}
 	if s := typeDefinition(); s != nil {
 		res.children = append(res.children, s)
@@ -410,24 +415,24 @@ func parameterList() *xmlElement {
 	return res
 }
 
-func classVarDec() *xmlElement {
-	var res *xmlElement = nil
+func classVarDec() *node {
+	var res *node = nil
 	if s := matchToken(regexp.MustCompile("static|field")); s != nil {
-		res = &xmlElement{
-			xType:    "classVarDec",
-			value:    "",
-			children: []*xmlElement{s},
+		res = &node{
+			nType:    "classVarDec",
+			nValue:   "",
+			children: []*node{s},
 		}
 		res.children = append(res.children, typeDefinition())
 		name := varName()
 		res.children = append(res.children, name)
-		varNames = append(varNames, name.value)
+		varNames = append(varNames, name.nValue)
 
 		for s = matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
 			res.children = append(res.children, s)
 			name = varName()
 			res.children = append(res.children, name)
-			varNames = append(varNames, name.value)
+			varNames = append(varNames, name.nValue)
 		}
 		res.children = append(res.children, matchToken(regexp.MustCompile(";")))
 	}

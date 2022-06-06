@@ -1,35 +1,35 @@
 package Parser
 
 type token struct {
-	tType string
-	value string
+	tType  string
+	tValue string
 }
 
-type xmlElement struct {
-	xType    string
-	value    string
-	children []*xmlElement
+type node struct {
+	nType    string
+	nValue   string
+	children []*node
 }
 
-func (x *xmlElement) ToXml(tabCount int) string {
-	if x == nil {
+func (root *node) ToXml(tabCount int) string {
+	if root == nil {
 		return ""
 	}
 	tabs := ""
 	for i := 0; i < tabCount; i++ {
 		tabs += "  "
 	}
-	res := tabs + "<" + x.xType + ">"
-	for _, child := range x.children {
+	res := tabs + "<" + root.nType + ">"
+	for _, child := range root.children {
 		c := child.ToXml(tabCount + 1)
 		if c != "" {
 			res += "\n" + c
 		}
 	}
-	if x.value != "" {
-		res += " " + x.value + " " + "</" + x.xType + ">"
+	if root.nValue != "" {
+		res += " " + root.nValue + " " + "</" + root.nType + ">"
 	} else {
-		res += "\n" + tabs + "</" + x.xType + ">"
+		res += "\n" + tabs + "</" + root.nType + ">"
 	}
 	return res
 }
