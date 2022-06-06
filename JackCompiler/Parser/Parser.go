@@ -2,12 +2,16 @@ package Parser
 
 import (
 	"regexp"
+	"strings"
 )
 
 var currentToken int
 var tokens []token
-var classNames []string
-var varNames []string
+
+var ClassSymbolTable *SymbolTable
+var SubroutineSymbolTable *SymbolTable
+var currentClassName string
+
 var subroutineNames []string
 var COMMA_REGEX = regexp.MustCompile(",")
 
@@ -32,14 +36,15 @@ func class() *node {
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("class")))
 	name := className()
+	currentClassName = name.nValue
 	res.children = append(res.children, name)
-	classNames = append(classNames, name.nValue)
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\{")))
 	for c := classVarDec(); c != nil; c = classVarDec() {
 		res.children = append(res.children, c)
 	}
 	for c := subroutineDec(); c != nil; c = subroutineDec() {
 		res.children = append(res.children, c)
+		SubroutineSymbolTable.startSubroutine()
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\}")))
 	return res
@@ -63,6 +68,11 @@ func subroutineDec() *node {
 			nValue:   "",
 			children: []*node{s},
 		}
+
+		if s.nValue == "method" {
+			SubroutineSymbolTable.define("this", currentClassName, "ARGUMENT")
+		}
+
 		if s := matchToken(regexp.MustCompile("void")); s != nil {
 			res.children = append(res.children, s)
 		} else {
@@ -323,7 +333,7 @@ func subroutineCall() *node {
 		res.children = append(res.children, expressionList())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
 		return res
-	} else if contains(varNames, tokens[currentToken].tValue) {
+	} else if SubroutineSymbolTable.indexOf(tokens[currentToken].tValue) != -1 {
 		res.children = append(res.children, varName())
 	} else if IDENTIFIER_REGEX.Match([]byte(name)) {
 		res.children = append(res.children, className())
@@ -387,11 +397,16 @@ func varDec() *node {
 	} else {
 		return nil
 	}
-	res.children = append(res.children, typeDefinition())
-	res.children = append(res.children, varName())
+	typeDef := typeDefinition()
+	res.children = append(res.children, typeDef)
+	name := varName()
+	res.children = append(res.children, name)
+	SubroutineSymbolTable.define(name.nValue, typeDef.nValue, "VAR")
 	for s := matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
 		res.children = append(res.children, s)
-		res.children = append(res.children, varName())
+		name = varName()
+		res.children = append(res.children, name)
+		SubroutineSymbolTable.define(name.nValue, typeDef.nValue, "VAR")
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile(";")))
 	return res
@@ -403,13 +418,18 @@ func parameterList() *node {
 		nValue:   "",
 		children: []*node{},
 	}
-	if s := typeDefinition(); s != nil {
-		res.children = append(res.children, s)
-		res.children = append(res.children, varName())
+	if typeDef := typeDefinition(); typeDef != nil {
+		res.children = append(res.children, typeDef)
+		name := varName()
+		res.children = append(res.children, name)
+		SubroutineSymbolTable.define(name.nValue, typeDef.nValue, "ARGUMENT")
 		for s := matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
 			res.children = append(res.children, s)
-			res.children = append(res.children, typeDefinition())
-			res.children = append(res.children, varName())
+			typeDef = typeDefinition()
+			res.children = append(res.children, typeDef)
+			name = varName()
+			res.children = append(res.children, name)
+			SubroutineSymbolTable.define(name.nValue, typeDef.nValue, "ARGUMENT")
 		}
 	}
 	return res
@@ -423,16 +443,19 @@ func classVarDec() *node {
 			nValue:   "",
 			children: []*node{s},
 		}
-		res.children = append(res.children, typeDefinition())
+		varClassification := strings.ToUpper(s.nValue)
+		varType := typeDefinition()
+		res.children = append(res.children, varType)
 		name := varName()
 		res.children = append(res.children, name)
-		varNames = append(varNames, name.nValue)
+		ClassSymbolTable.define(name.nValue, varType.nValue, varClassification)
 
 		for s = matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
 			res.children = append(res.children, s)
 			name = varName()
 			res.children = append(res.children, name)
-			varNames = append(varNames, name.nValue)
+
+			ClassSymbolTable.define(name.nValue, varType.nValue, varClassification)
 		}
 		res.children = append(res.children, matchToken(regexp.MustCompile(";")))
 	}
@@ -442,6 +465,8 @@ func classVarDec() *node {
 func ParseToXML(source string) string {
 	tokens = GetTokens(source)
 	currentToken = 0
+	ClassSymbolTable = newSymbolTable()
+	SubroutineSymbolTable = newSymbolTable()
 	root := class()
 	return root.ToXml(0)
 }
