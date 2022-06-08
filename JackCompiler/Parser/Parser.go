@@ -1,7 +1,9 @@
 package Parser
 
 import (
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -11,9 +13,25 @@ var tokens []token
 var ClassSymbolTable *SymbolTable
 var SubroutineSymbolTable *SymbolTable
 var currentClassName string
+var writer VMWriter
 
 var subroutineNames []string
-var COMMA_REGEX = regexp.MustCompile(",")
+var CommaRegex = regexp.MustCompile(",")
+
+var opMap = map[string]string{
+	"+":     "add",
+	"-":     "sub",
+	"*":     "call Math.multiply 2",
+	"/":     "call Math.divide 2",
+	"&":     "and",
+	"&amp;": "and",
+	"|":     "or",
+	"<":     "lt",
+	"&lt;":  "lt",
+	">":     "gt",
+	"&gt;":  "gt",
+	"=":     "eq",
+}
 
 func matchToken(that *regexp.Regexp) *node {
 	if that.MatchString(tokens[currentToken].tValue) {
@@ -45,6 +63,8 @@ func class() *node {
 	for c := subroutineDec(); c != nil; c = subroutineDec() {
 		res.children = append(res.children, c)
 		SubroutineSymbolTable.startSubroutine()
+		writer.ifCount = 0
+		writer.whileCount = 0
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\}")))
 	return res
@@ -84,12 +104,12 @@ func subroutineDec() *node {
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
 		res.children = append(res.children, parameterList())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
-		res.children = append(res.children, subroutineBody())
+		res.children = append(res.children, subroutineBody(name.nValue, s.nValue))
 	}
 	return res
 }
 
-func subroutineBody() *node {
+func subroutineBody(name string, kind string) *node {
 	res := &node{
 		nType:    "subroutineBody",
 		nValue:   "",
@@ -99,6 +119,20 @@ func subroutineBody() *node {
 	for c := varDec(); c != nil; c = varDec() {
 		res.children = append(res.children, c)
 	}
+	writer.writeFunction(currentClassName, name, SubroutineSymbolTable.varCount("VAR"))
+
+	switch kind {
+	case "constructor":
+		writer.writePush("constant", ClassSymbolTable.varCount("FIELD"))
+		writer.writeCall("Memory.alloc", 1)
+		writer.writePop("pointer", 0)
+		break
+	case "method":
+		writer.writePush("argument", 0)
+		writer.writePop("pointer", 0)
+		break
+	}
+
 	if s := statements(); s != nil {
 		res.children = append(res.children, s)
 	}
@@ -150,7 +184,10 @@ func returnStatement() *node {
 	res.children = append(res.children, matchToken(regexp.MustCompile("return")))
 	if s := expression(); s != nil {
 		res.children = append(res.children, s)
+	} else {
+		writer.writePush("constant", 0)
 	}
+	writer.writeReturn()
 	res.children = append(res.children, matchToken(regexp.MustCompile(";")))
 	return res
 }
@@ -162,9 +199,9 @@ func doStatement() *node {
 		children: []*node{},
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("do")))
-	//res.children = append(res.children, subroutineCall())
 	res.children = append(res.children, subroutineCall().children...)
 	res.children = append(res.children, matchToken(regexp.MustCompile(";")))
+	writer.writePop("temp", 0)
 	return res
 }
 
@@ -174,13 +211,22 @@ func whileStatement() *node {
 		nValue:   "",
 		children: []*node{},
 	}
+	// for nested whiles
+	currentWhileCount := writer.whileCount
+	writer.whileCount++
 	res.children = append(res.children, matchToken(regexp.MustCompile("while")))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
+	writer.writeLabel("WHILE_EXP" + strconv.Itoa(currentWhileCount))
 	res.children = append(res.children, expression())
+	writer.writeArithmetic("not")
+	writer.writeIf("WHILE_END" + strconv.Itoa(currentWhileCount))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\{")))
 	res.children = append(res.children, statements())
 	res.children = append(res.children, matchToken(regexp.MustCompile("}")))
+	writer.writeGoto("WHILE_EXP" + strconv.Itoa(currentWhileCount))
+	writer.writeLabel("WHILE_END" + strconv.Itoa(currentWhileCount))
+	//writer.whileCount--
 	return res
 }
 
@@ -190,19 +236,35 @@ func ifStatement() *node {
 		nValue:   "",
 		children: []*node{},
 	}
+	ifElse := false
 	res.children = append(res.children, matchToken(regexp.MustCompile("if")))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
 	res.children = append(res.children, expression())
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
+	// for nested ifs
+	currentIfCount := writer.ifCount
+	writer.ifCount++
+	writer.writeIf("IF_TRUE" + strconv.Itoa(currentIfCount))
+	writer.writeGoto("IF_FALSE" + strconv.Itoa(currentIfCount))
+	writer.writeLabel("IF_TRUE" + strconv.Itoa(currentIfCount))
 	res.children = append(res.children, matchToken(regexp.MustCompile("\\{")))
 	res.children = append(res.children, statements())
 	res.children = append(res.children, matchToken(regexp.MustCompile("}")))
+	if tokens[currentToken].tValue == "else" {
+		ifElse = true
+		writer.writeGoto("IF_END" + strconv.Itoa(currentIfCount))
+	}
+	writer.writeLabel("IF_FALSE" + strconv.Itoa(currentIfCount))
 	if s := matchToken(regexp.MustCompile("else")); s != nil {
 		res.children = append(res.children, s)
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\{")))
 		res.children = append(res.children, statements())
 		res.children = append(res.children, matchToken(regexp.MustCompile("}")))
 	}
+	if ifElse {
+		writer.writeLabel("IF_END" + strconv.Itoa(currentIfCount))
+	}
+	//writer.ifCount--
 	return res
 }
 
@@ -212,16 +274,39 @@ func letStatement() *node {
 		nValue:   "",
 		children: []*node{},
 	}
+	withArray := false
 	res.children = append(res.children, matchToken(regexp.MustCompile("let")))
-	res.children = append(res.children, varName())
+	name := varName()
+	res.children = append(res.children, name)
 	if s := matchToken(regexp.MustCompile("[\\[\\(]")); s != nil {
+		withArray = true
 		res.children = append(res.children, s)
 		res.children = append(res.children, expression())
 		res.children = append(res.children, matchToken(regexp.MustCompile("[\\]\\)]")))
+		if SubroutineSymbolTable.indexOf(name.nValue) != -1 {
+			writer.writePush(SubroutineSymbolTable.kindOf(name.nValue), SubroutineSymbolTable.indexOf(name.nValue))
+		} else {
+			writer.writePush(ClassSymbolTable.kindOf(name.nValue), ClassSymbolTable.indexOf(name.nValue))
+		}
+		writer.writeArithmetic("add")
 	}
 	res.children = append(res.children, matchToken(regexp.MustCompile("=")))
 	res.children = append(res.children, expression())
 	res.children = append(res.children, matchToken(regexp.MustCompile(";")))
+
+	if !withArray {
+		if SubroutineSymbolTable.indexOf(name.nValue) != -1 {
+			writer.writePop(SubroutineSymbolTable.kindOf(name.nValue), SubroutineSymbolTable.indexOf(name.nValue))
+		} else {
+			writer.writePop(ClassSymbolTable.kindOf(name.nValue), ClassSymbolTable.indexOf(name.nValue))
+		}
+	} else {
+		writer.writePop("temp", 0)
+		writer.writePop("pointer", 1)
+		writer.writePush("temp", 0)
+		writer.writePop("that", 0)
+	}
+
 	return res
 }
 
@@ -236,6 +321,7 @@ func expression() *node {
 		for s := op(); s != nil; s = op() {
 			res.children = append(res.children, s)
 			res.children = append(res.children, term())
+			writer.writeArithmetic(opMap[s.nValue])
 		}
 		return res
 	}
@@ -255,51 +341,53 @@ func term() *node {
 		nValue:   "",
 		children: []*node{},
 	}
-	tokenCount := len(tokens)
 	if s := matchToken(INTEGER_REGEX); s != nil {
 		res.children = append(res.children, s)
-	} else if s := matchToken(STRING_REGEX); s != nil {
+		n, _ := strconv.Atoi(s.nValue)
+		writer.writePush("constant", n)
+	} else if tokens[currentToken].tType == "stringConstant" {
+		s := matchToken(regexp.MustCompile("^*$"))
 		res.children = append(res.children, s)
+		writer.writePush("constant", len(s.nValue))
+		writer.writeCall("String.new", 1)
+		for _, c := range s.nValue {
+			writer.writePush("constant", int(c))
+			writer.writeCall("String.appendChar", 2)
+		}
 	} else if s := keywordConstant(); s != nil {
 		res.children = append(res.children, s)
-	} else if tokens[currentToken+1].tValue != "[" &&
-		((currentToken < tokenCount-1 && tokens[currentToken+1].tValue == "(") ||
-			((currentToken < tokenCount-1 && tokens[currentToken+1].tValue == ".") &&
-				currentToken < tokenCount-3 && tokens[currentToken+3].tValue == "(")) {
-		if s := subroutineCall(); s != nil {
-			//res.children = append(res.children, s)
-			res.children = append(res.children, s.children...)
-		} else if s := varName(); s != nil {
-			res.children = append(res.children, s)
-			if s := matchToken(regexp.MustCompile("[\\[\\(]")); s != nil {
-				res.children = append(res.children, s)
-				res.children = append(res.children, expression())
-				res.children = append(res.children, matchToken(regexp.MustCompile("[\\]\\)]")))
-			}
-		} else if s := matchToken(regexp.MustCompile("\\(")); s != nil {
-			res.children = append(res.children, s)
-			res.children = append(res.children, expression())
-			res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
-		} else if s := unaryOp(); s != nil {
-			res.children = append(res.children, s)
-			res.children = append(res.children, term())
-		} else {
-			return nil
+		switch s.nValue {
+		case "true":
+			writer.writePush("constant", 0)
+			writer.writeArithmetic("not")
+			break
+		case "false":
+			writer.writePush("constant", 0)
+			break
+		case "null":
+			writer.writePush("constant", 0)
+			break
+		case "this":
+			writer.writePush("pointer", 0)
 		}
-	} else if s := varName(); s != nil {
-		res.children = append(res.children, s)
-		if s := matchToken(regexp.MustCompile("[\\[\\(]")); s != nil {
-			res.children = append(res.children, s)
-			res.children = append(res.children, expression())
-			res.children = append(res.children, matchToken(regexp.MustCompile("[\\]\\)]")))
-		}
-	} else if s := matchToken(regexp.MustCompile("\\(")); s != nil {
-		res.children = append(res.children, s)
+	} else if IDENTIFIER_REGEX.Match([]byte(tokens[currentToken].tValue)) {
+		res.children = append(res.children, subroutineCall())
+	} else if tokens[currentToken].tValue == "(" {
+		res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
 		res.children = append(res.children, expression())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
 	} else if s := unaryOp(); s != nil {
 		res.children = append(res.children, s)
-		res.children = append(res.children, term())
+		switch s.nValue {
+		case "~":
+			res.children = append(res.children, term())
+			writer.writeArithmetic("not")
+			break
+		case "-":
+			res.children = append(res.children, term())
+			writer.writeArithmetic("neg")
+			break
+		}
 	} else {
 		return nil
 	}
@@ -326,26 +414,63 @@ func subroutineCall() *node {
 		nValue:   "",
 		children: []*node{},
 	}
-	name := tokens[currentToken].tValue
-	if contains(subroutineNames, name) {
-		res.children = append(res.children, subroutineName())
+	sName := subroutineName()
+	name1 := sName.nValue
+	count := 0
+	res.children = append(res.children, sName)
+	switch tokens[currentToken].tValue {
+	case "(":
+		res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
+		writer.writePush("pointer", 0)
+		count++
+		res.children = append(res.children, expressionList())
+		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
+		if len(res.children[2].children) != 0 {
+			count += len(res.children[2].children)/2 + 1
+		}
+		writer.writeCall(currentClassName+"."+name1, count)
+		break
+	case "[":
+		res.children = append(res.children, matchToken(regexp.MustCompile("\\[")))
+		res.children = append(res.children, expression())
+		res.children = append(res.children, matchToken(regexp.MustCompile("\\]")))
+		if SubroutineSymbolTable.indexOf(name1) != -1 {
+			writer.writePush(SubroutineSymbolTable.kindOf(name1), SubroutineSymbolTable.indexOf(name1))
+		} else {
+			writer.writePush(ClassSymbolTable.kindOf(name1), ClassSymbolTable.indexOf(name1))
+		}
+		writer.writeArithmetic("add")
+		writer.writePop("pointer", 1)
+		writer.writePush("that", 0)
+		break
+	case ".":
+		res.children = append(res.children, matchToken(regexp.MustCompile("\\.")))
+		name2 := subroutineName()
+		res.children = append(res.children, name2)
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
 		res.children = append(res.children, expressionList())
 		res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
-		return res
-	} else if SubroutineSymbolTable.indexOf(tokens[currentToken].tValue) != -1 {
-		res.children = append(res.children, varName())
-	} else if IDENTIFIER_REGEX.Match([]byte(name)) {
-		res.children = append(res.children, className())
-	} else {
-		return nil
+		if SubroutineSymbolTable.typeOf(name1) != "" {
+			writer.writePush(SubroutineSymbolTable.kindOf(name1), SubroutineSymbolTable.indexOf(name1))
+			count++
+			name1 = SubroutineSymbolTable.typeOf(name1)
+		} else if ClassSymbolTable.typeOf(name1) != "" {
+			writer.writePush(ClassSymbolTable.kindOf(name1), ClassSymbolTable.indexOf(name1))
+			count++
+			name1 = ClassSymbolTable.typeOf(name1)
+		}
+		if len(res.children[4].children) != 0 {
+			count += len(res.children[4].children)/2 + 1
+		}
+		writer.writeCall(name1+"."+name2.nValue, count)
+		break
+	default:
+		if SubroutineSymbolTable.indexOf(name1) != -1 {
+			writer.writePush(SubroutineSymbolTable.kindOf(name1), SubroutineSymbolTable.indexOf(name1))
+		} else {
+			writer.writePush(ClassSymbolTable.kindOf(name1), ClassSymbolTable.indexOf(name1))
+		}
 	}
-	res.children = append(res.children, matchToken(regexp.MustCompile("\\.")))
-	res.children = append(res.children, subroutineName())
-	res.children = append(res.children, matchToken(regexp.MustCompile("\\(")))
-	res.children = append(res.children, expressionList())
-	res.children = append(res.children, matchToken(regexp.MustCompile("\\)")))
-
 	return res
 }
 
@@ -357,7 +482,7 @@ func expressionList() *node {
 	}
 	if s := expression(); s != nil {
 		res.children = append(res.children, s)
-		for s := matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
+		for s := matchToken(CommaRegex); s != nil; s = matchToken(CommaRegex) {
 			res.children = append(res.children, s)
 			res.children = append(res.children, expression())
 		}
@@ -402,7 +527,7 @@ func varDec() *node {
 	name := varName()
 	res.children = append(res.children, name)
 	SubroutineSymbolTable.define(name.nValue, typeDef.nValue, "VAR")
-	for s := matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
+	for s := matchToken(CommaRegex); s != nil; s = matchToken(CommaRegex) {
 		res.children = append(res.children, s)
 		name = varName()
 		res.children = append(res.children, name)
@@ -423,7 +548,7 @@ func parameterList() *node {
 		name := varName()
 		res.children = append(res.children, name)
 		SubroutineSymbolTable.define(name.nValue, typeDef.nValue, "ARGUMENT")
-		for s := matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
+		for s := matchToken(CommaRegex); s != nil; s = matchToken(CommaRegex) {
 			res.children = append(res.children, s)
 			typeDef = typeDefinition()
 			res.children = append(res.children, typeDef)
@@ -450,7 +575,7 @@ func classVarDec() *node {
 		res.children = append(res.children, name)
 		ClassSymbolTable.define(name.nValue, varType.nValue, varClassification)
 
-		for s = matchToken(COMMA_REGEX); s != nil; s = matchToken(COMMA_REGEX) {
+		for s = matchToken(CommaRegex); s != nil; s = matchToken(CommaRegex) {
 			res.children = append(res.children, s)
 			name = varName()
 			res.children = append(res.children, name)
@@ -469,4 +594,15 @@ func ParseToXML(source string) string {
 	SubroutineSymbolTable = newSymbolTable()
 	root := class()
 	return root.ToXml(0)
+}
+
+func ParseToVM(file *os.File) {
+	source, _ := os.ReadFile(file.Name())
+	tokens = GetTokens(string(source))
+	currentToken = 0
+	ClassSymbolTable = newSymbolTable()
+	SubroutineSymbolTable = newSymbolTable()
+	writer.open(strings.TrimSuffix(file.Name(), ".jack") + ".vm")
+	class()
+	writer.close()
 }

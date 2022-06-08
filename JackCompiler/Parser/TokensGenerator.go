@@ -13,7 +13,7 @@ var DIGIT_REGEX = regexp.MustCompile("[0-9]")
 var CAPITAL_SMALL_LETTER_REGEX = regexp.MustCompile("[A-Za-z]")
 var IDENTIFIER_REGEX = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*")
 var INTEGER_REGEX = regexp.MustCompile("^(3276[0-7]|327[0-5]\\d|32[0-6]\\d{2}|3[01]\\d{3}|[12]\\d{4}|[1-9]\\d{3}|[1-9]\\d{2}|[1-9]\\d|\\d)$")
-var STRING_REGEX = regexp.MustCompile("^\"[^\n]*\"$")
+var STRING_REGEX = regexp.MustCompile("\".*\"")
 var KEYWORD_REGEX = regexp.MustCompile("^(class|constructor|function|method|field|static|var|int|char|boolean|void|true|false|null|this|let|do|if|else|while|return)")
 var SYMBOLS = [...]string{"{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "|", "<", ">", "=", "~"}
 

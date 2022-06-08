@@ -1,5 +1,11 @@
 package Parser
 
+import (
+	"os"
+	"strconv"
+	"strings"
+)
+
 type token struct {
 	tType  string
 	tValue string
@@ -90,7 +96,7 @@ func (table *SymbolTable) varCount(kind string) int {
 func (table *SymbolTable) kindOf(name string) string {
 	for _, entry := range table.entries {
 		if entry.name == name {
-			return entry.kind
+			return strings.ToLower(entry.kind)
 		}
 	}
 	return ""
@@ -112,4 +118,66 @@ func (table *SymbolTable) indexOf(name string) int {
 		}
 	}
 	return -1
+}
+
+type VMWriter struct {
+	oFile      *os.File
+	whileCount int
+	ifCount    int
+}
+
+func (writer *VMWriter) open(fileName string) {
+	writer.oFile, _ = os.Create(fileName)
+	writer.whileCount = 0
+	writer.ifCount = 0
+}
+
+func (writer *VMWriter) writePush(segment string, index int) {
+	if segment == "var" {
+		segment = "local"
+	} else if segment == "field" {
+		segment = "this"
+	}
+	writer.oFile.WriteString("push " + segment + " " + strconv.Itoa(index) + "\n")
+}
+
+func (writer *VMWriter) writePop(segment string, index int) {
+	if segment == "var" {
+		segment = "local"
+	} else if segment == "field" {
+		segment = "this"
+	}
+	writer.oFile.WriteString("pop " + segment + " " + strconv.Itoa(index) + "\n")
+}
+
+func (writer *VMWriter) writeArithmetic(command string) {
+	writer.oFile.WriteString(command + "\n")
+}
+
+func (writer *VMWriter) writeLabel(label string) {
+	writer.oFile.WriteString("label " + label + "\n")
+}
+
+func (writer *VMWriter) writeGoto(label string) {
+	writer.oFile.WriteString("goto " + label + "\n")
+}
+
+func (writer *VMWriter) writeIf(label string) {
+	writer.oFile.WriteString("if-goto " + label + "\n")
+}
+
+func (writer *VMWriter) writeCall(name string, nArgs int) {
+	writer.oFile.WriteString("call " + name + " " + strconv.Itoa(nArgs) + "\n")
+}
+
+func (writer *VMWriter) writeFunction(className string, name string, nLocals int) {
+	writer.oFile.WriteString("function " + className + "." + name + " " + strconv.Itoa(nLocals) + "\n")
+}
+
+func (writer *VMWriter) writeReturn() {
+	writer.oFile.WriteString("return\n")
+}
+
+func (writer *VMWriter) close() {
+	writer.oFile.Close()
 }
